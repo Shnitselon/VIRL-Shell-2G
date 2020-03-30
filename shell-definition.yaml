@@ -1,0 +1,81 @@
+tosca_definitions_version: tosca_simple_yaml_1_0
+
+metadata:
+  template_name: VIRL Shell
+  template_author: Quali
+  template_version: 1.0.0
+  template_icon: VIRL.png
+
+description: >
+ Virtual Internet Routing Lab Cloud Provider
+
+imports:
+  - cloudshell_standard: cloudshell_cloud_provider_standard_1_0_0.yaml
+  
+  
+node_types:
+ vendor.resource.VIRL Shell:
+    derived_from: cloudshell.nodes.CustomCloudProvider
+    properties:
+      API User:
+        description: Username with administrative privilages
+        type: string
+      API Password:
+        description: The password is required to use VIRL API
+        type: cloudshell.datatypes.Password
+      Management Network:
+        description: Management network name
+        type: string
+        default: flat
+      STD API Port:
+        description: STD API port
+        type: integer
+        default: 19399
+      UWM API Port:
+        description: UWM API port
+        type: integer
+        default: 19400
+    capabilities:
+      concurrent_execution:
+        type: cloudshell.capabilities.SupportConcurrentCommands
+      auto_discovery_capability:
+        type: cloudshell.capabilities.AutoDiscovery
+        properties:
+          enable_auto_discovery:
+            type: boolean
+            default: true
+          auto_discovery_description:
+            default: Describe the auto discovery
+            type: string
+          inventory_description:
+            type: string
+            default: Describe the resource shell template
+          API User:
+            description: Username with administrative privilages
+            type: string
+          API Password:
+            description: The password is required to use VIRL API
+            type: cloudshell.datatypes.Password
+          Management Network:
+            description: Management network name
+            type: string
+            default: flat
+          STD API Port:
+            description: STD API port
+            type: integer
+            default: 19399
+          UWM API Port:
+            description: UWM API port
+            type: integer
+            default: 19400
+
+    artifacts:
+      icon:
+        file: VIRL.png
+        type: tosca.artifacts.File
+      driver:
+        file: VIRLShellDriver.zip
+        type: tosca.artifacts.File
+      deployment:
+        file: Deployments.zip
+        type: tosca.artifacts.File

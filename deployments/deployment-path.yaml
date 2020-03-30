@@ -1,0 +1,47 @@
+tosca_definitions_version: tosca_simple_yaml_1_0
+
+metadata:
+  template_name: VIRL Shell
+  template_author: Quali
+  template_version: 1.0.0
+  template_icon: Cisco.png
+
+description: >
+  Deploy an topology using Virtual Internet Routing Lab
+
+imports:
+  - cloudshell_standard: cloudshell_cloud_provider_standard_1_0_0.yaml
+
+node_types:
+  vendor.resource.VIRL VM:
+    derived_from: cloudshell.nodes.CustomDeploymentOption
+    properties:
+      Image Type:
+        description: Virtual device type
+        type: string
+        default: "IOSv"
+#        constraints:
+#        - valid_values: ["IOSv", "IOSvL2", "ASAv", "CSR1000v", "IOS XRv"]
+        tags: [user_input]
+      AutoStart:
+        description: True if the App needs to startup
+        type: boolean
+        tags: [user_input]
+#      User:
+#        description: User with administrative privileges
+#        type: string
+#      Password:
+#        description: The password is required by some CLI protocols such as Telnet and is required according to the device configuration.
+#        type: cloudshell.datatypes.Password
+#      Enable Password:
+#        description: The enable password is required by some CLI protocols such as Telnet and is required according to the device configuration.
+#        type: cloudshell.datatypes.Password
+      StartUp Timeout:
+        description: Timeout during which VM should be deployed (in seconds)
+        type: integer
+        default: 300
+        tags: [user_input]
+    artifacts:
+      icon:
+        file: Cisco.png
+        type: tosca.artifacts.File
