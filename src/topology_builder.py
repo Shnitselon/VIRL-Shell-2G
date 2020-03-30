@@ -8,10 +8,7 @@ from lxml.builder import ElementMaker
 
 from templates import configurations as config
 
-TOPOLOGY_WITH_NS = """<topology xmlns="http://www.cisco.com/VIRL" 
-xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-schemaVersion="0.95" 
-xsi:schemaLocation="http://www.cisco.com/VIRL https://raw.github.com/CiscoVIRL/schema/v0.95/virl.xsd">"""
+TOPOLOGY_WITH_NS = """<topology xmlns="http://www.cisco.com/VIRL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" schemaVersion="0.95" xsi:schemaLocation="http://www.cisco.com/VIRL https://raw.github.com/CiscoVIRL/schema/v0.95/virl.xsd">"""
 
 
 class Node:

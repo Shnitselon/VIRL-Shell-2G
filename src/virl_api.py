@@ -110,9 +110,9 @@ class VIRL_API:
         response.raise_for_status()
 
         port_id = response.json().get("port", {}).get("id")
-        port_addr = response.json().get("port", {}).get("id")
+        port_addr = response.json().get("port", {}).get("fixed_ips")[0].get("ip_address")
         if not port_id or not port_addr:
-            raise VIRLAPIException("Error happened during port ID determination")
+            raise VIRLAPIException("Error happened during port creation determination")
 
         return port_id, port_addr
 
@@ -239,6 +239,7 @@ if __name__ == "__main__":
     #         print(k, v)
     #     print()
 
+    # topology_data = open("../_develop/data/virl_topology.virl", 'rb').read()
     # virl_api.upload_topology(reservation_id="Quali_Res_ID", topology_data=topology_data)
     # virl_api.start_node(topology_name="Quali_Res_ID", node_name="Router 1")
     # virl_api.stop_node(topology_name="Quali_Res_ID", node_name="Router 1")
