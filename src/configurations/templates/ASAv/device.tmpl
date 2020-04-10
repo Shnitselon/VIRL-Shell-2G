@@ -1,0 +1,65 @@
+hostname {node_name}
+!
+crypto key generate rsa modulus 2048
+username {user} password {password} privilege 15
+enable password {enable_password}
+passwd {password}
+names
+!
+interface Management0/0
+ description OOB Management
+ duplex full
+ management-only
+ nameif mgmt
+ security-level 100
+ ip address dhcp
+!
+!{interfaces}
+!
+same-security-traffic permit inter-interface
+logging enable
+logging asdm informational
+!
+route mgmt 0.0.0.0 0.0.0.0 {default_gateway}
+!
+user-identity default-domain LOCAL
+aaa authentication ssh console LOCAL
+ssh 0.0.0.0 0.0.0.0 mgmt
+telnet 0.0.0.0 0.0.0.0 mgmt
+ssh version 2
+telnet timeout 15
+console timeout 0
+!
+class-map inspection_default
+ match default-inspection-traffic
+!
+policy-map type inspect dns preset_dns_map
+ parameters
+  message-length maximum client auto
+  message-length maximum 512
+policy-map global_policy
+ class inspection_default
+  inspect ip-options
+  inspect netbios
+  inspect rtsp
+  inspect sunrpc
+  inspect tftp
+  inspect xdmcp
+  inspect dns preset_dns_map
+  inspect ftp
+  inspect h323 h225
+  inspect h323 ras
+  inspect rsh
+  inspect esmtp
+  inspect sqlnet
+  inspect sip
+  inspect skinny
+  inspect icmp
+  inspect http
+!
+service-policy global_policy global
+no call-home reporting anonymous
+call-home
+ profile CiscoTAC-1
+  no active
+end

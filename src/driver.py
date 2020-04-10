@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import ipaddress
-import time
 import json
 import jsonpickle
+import os
+import time
+
+from requests import HTTPError
 
 from cloudshell.shell.core.driver_context import AutoLoadDetails, ResourceRemoteCommandContext
 
@@ -23,11 +26,11 @@ from virl_exceptions import VIRLShellError
 
 from api_utils import get_reservation_details, MIN_STARTUP_TIMEOUT
 from topology_builder import Topology
-from virl_api import VIRL_API
+from virl_api import VIRL_API, IFACE_REBOOT_TIMEOUT
 
 
 class VIRLShellDriver(ResourceDriverInterface):
-    NEED_IP_ADDRESS = ["NX-OSv"]
+    # NEED_IP_ADDRESS = ["NX-OSv"]
 
     def __init__(self):
         """ Constructor must be without arguments, it is created with reflection at run time """
@@ -35,7 +38,6 @@ class VIRLShellDriver(ResourceDriverInterface):
         self.deployments = dict()
         # Keys should be partial names of deployment paths
         self.deployments["VIRL VM"] = self.vm_from_image
-        self.reservation_details = None
 
     def cleanup(self):
         pass
@@ -49,15 +51,22 @@ class VIRLShellDriver(ResourceDriverInterface):
         with LoggingSessionContext(context) as logger:
             resource_config = ShellResource.create_from_context(context)
 
-            logger.debug("Username: {username}\n"
+            logger.info("Configuration Templates Location: {path}"
+                        "Username: {username}\n"
                         "Password: {password}\n"
                         "Host: {host}\n"
                         "STD: {std_port}\n"
-                        "UWM: {uwm_port}".format(host=resource_config.address,
+                        "UWM: {uwm_port}".format(path=resource_config.templates_path,
+                                                 host=resource_config.address,
                                                  std_port=resource_config.std_port,
                                                  uwm_port=resource_config.uwm_port,
                                                  username=resource_config.username,
                                                  password=resource_config.password))
+
+            if resource_config.templates_path and not os.path.exists(resource_config.templates_path):
+                msg = "Wrong path provided for device configuration templates"
+                logger.error("{msg}. Provided path: {path}".format(msg=msg, path=resource_config.templates_path))
+                raise VIRLShellError(msg)
 
             virl_api = VIRL_API(host=resource_config.address,
                                 std_port=resource_config.std_port,
@@ -66,10 +75,15 @@ class VIRLShellDriver(ResourceDriverInterface):
                                 password=resource_config.password)
 
             try:
-                virl_api.health_check()
-            except Exception as err:
-                raise Exception("Can not connect to VIRL Server. Please, verify provided credentials."
-                                "Error: {}".format(err))
+                avail_networks = virl_api.get_all_avail_networks()
+                if resource_config.mgmt_network not in avail_networks:
+                    raise VIRLShellError("Provided Management Network <{mgmt_network}> doesn't exist. "
+                                         "Available networks: {avail_networks}".format(
+                        mgmt_network=resource_config.mgmt_network, avail_networks=avail_networks))
+                # virl_api.health_check()
+            except HTTPError as err:
+                raise VIRLShellError("Can not connect to VIRL Server. Please, verify provided credentials."
+                                     "Error: {}".format(err))
 
             return AutoLoadDetails([], [])
 
@@ -89,13 +103,18 @@ class VIRLShellDriver(ResourceDriverInterface):
             resource_config.api.WriteMessageToReservationOutput(resource_config.reservation_id,
                                                                 "Preparing Sandbox Connectivity...")
 
-            logger.debug(f"REQUEST: {request}")
-            logger.debug("Cloud Provider Name: {}".format(resource_config.name))
+            logger.info(f"REQUEST: {request}")
+            logger.info("Cloud Provider Name: {}".format(resource_config.name))
 
-            if not self.reservation_details:
-                self.reservation_details = get_reservation_details(api=resource_config.api,
-                                                                   reservation_id=resource_config.reservation_id,
-                                                                   cloud_provider_name=resource_config.name)
+            r_id, reservation_details = get_reservation_details(api=resource_config.api,
+                                                                reservation_id=resource_config.reservation_id,
+                                                                cloud_provider_name=resource_config.name)
+
+            logger.info("Initial Reservation <{res_id}> Details: {details}".format(res_id=r_id,
+                                                                                   details=reservation_details))
+            if resource_config.reservation_id != r_id:
+                raise VIRLShellError("Wrong reservation details obtained")
+
             json_request = json.loads(request)
 
             vcn_action_id = ""
@@ -108,14 +127,12 @@ class VIRLShellDriver(ResourceDriverInterface):
                 elif action["type"] == "prepareSubnet":
                     subnet_action_id = action.get("actionId")
                     subnet_cidr = action.get("actionParams", {}).get("cidr")
-                    # subnet_alias = action.get("actionParams", {}).get("alias")
-                    subnet_dict[subnet_cidr] = subnet_action_id
+                    subnet_alias = action.get("actionParams", {}).get("alias")
+                    subnet_dict[subnet_cidr] = (subnet_action_id, subnet_alias)
                 elif action["type"] == "createKeys":
                     keys_action_id = action.get("actionId")
 
             prepare_network_result = PrepareCloudInfraResult(vcn_action_id)
-
-            res_details = dict(self.reservation_details)
 
             virl_api = VIRL_API(host=resource_config.address,
                                 std_port=resource_config.std_port,
@@ -125,55 +142,64 @@ class VIRLShellDriver(ResourceDriverInterface):
 
             avail_image_types = virl_api.get_available_image_types()
 
-            def_gateway = virl_api.get_default_gateway()
+            default_gateway_info = virl_api.get_default_gateway()
 
-            resources = {}
-            for res_name, res_params in res_details["resources"].items():
+            # resources = {}
+            for res_name, res_params in reservation_details["resources"].items():
                 image_type = res_params.get("image type")
                 if image_type not in avail_image_types:
                     raise VIRLShellError(f"Unable to find requested Image Type {image_type}>. "
                                          f"Avail images: {avail_image_types}")
 
                 # NX-OS hack with IP address determination
-                if image_type in self.NEED_IP_ADDRESS:
-                    res_params["ip address"] = virl_api.get_dhcp_ipaddr(network_name=resource_config.mgmt_network)
-                resources.update({res_name: res_params})
+                # if image_type in self.NEED_IP_ADDRESS:
+                # res_params["ip address"] = virl_api.get_dhcp_ipaddr(network_name=resource_config.mgmt_network)
+                # resources.update({res_name: res_params})
 
-            res_details.update({"resources": resources, "default_gateway": def_gateway})
+            # res_details.update({"resources": resources, "default_gateway_info": default_gateway_info})
+            reservation_details.update({"default_gateway_info": default_gateway_info})
 
-            logger.debug(f"Reservation Details: {res_details}")
+            logger.info(f"Updated Reservation Details: {reservation_details}")
 
-            topology = Topology(**res_details)
-            topology_data = topology.create_topology()
+            topology = Topology(**reservation_details)
+            topology_data = topology.create_topology(mgmt_net_name=resource_config.mgmt_network,
+                                                     template_path=resource_config.templates_path)
 
-            logger.debug(f"Topology Data: {topology_data}")
+            logger.info(f"Topology Data: {topology_data}")
 
             virl_api.upload_topology(topology_data=topology_data, reservation_id=resource_config.reservation_id)
             ifaces_info = virl_api.get_ifaces_info(topology_name=resource_config.reservation_id)
 
-            for subnet_action_cidr, subnet_action_id in subnet_dict.items():
-                logger.debug(f"ACTIONS: {subnet_action_id}, {subnet_action_cidr}")
+            for subnet_action_cidr, (subnet_action_id, alias) in subnet_dict.items():
+                logger.info(f"ACTIONS: {subnet_action_id}, {alias}, {subnet_action_cidr}")
                 action_id = None
-                for connection in res_details.get("connections", []):
-                    logger.debug("ACTION CIDR: {}, CONN NETWORK: {}".format(subnet_action_cidr, connection.get("network")))
-                    if connection.get("network") == subnet_action_cidr:
-                        action_id = subnet_action_id
-                        break
-                if not action_id and subnet_action_cidr in res_details.get("subnets", {}).values():
+
+                if alias == "DefaultSubnet":
                     action_id = subnet_action_id
-                # else:
-                if not action_id:
-                    raise VIRLShellError(f"Couldn't find appropriate network for action id {subnet_action_id}")
-
-                for _, node_params in ifaces_info.items():
-                    for node in node_params:
-                        address = node.get("ipv4")
-
-                        if address and ipaddress.ip_address(address) in ipaddress.ip_network(subnet_action_cidr):
-                            subnet_id = node.get("network")
+                    subnet_id = resource_config.mgmt_network
+                else:
+                    for connection in reservation_details.get("connections", []):
+                        logger.info(
+                            "ACTION CIDR: {}, CONN NETWORK: {}".format(subnet_action_cidr, connection.get("network")))
+                        if connection.get("network") == subnet_action_cidr:
+                            action_id = subnet_action_id
                             break
-                    if subnet_id:
-                        break
+                    if not action_id and subnet_action_cidr in reservation_details.get("subnets", {}).values():
+                        action_id = subnet_action_id
+                    # else:
+                    if not action_id:
+                        raise VIRLShellError(f"Couldn't find appropriate network for action id {subnet_action_id}")
+
+                    subnet_id = None
+                    for _, node_params in ifaces_info.items():
+                        for node in node_params:
+                            address = node.get("ipv4")
+
+                            if address and ipaddress.ip_address(address) in ipaddress.ip_network(subnet_action_cidr):
+                                subnet_id = node.get("network")
+                                break
+                        if subnet_id:
+                            break
 
                 subnet_result = PrepareSubnetActionResult()
                 subnet_result.actionId = action_id
@@ -245,15 +271,21 @@ class VIRLShellDriver(ResourceDriverInterface):
                             password=resource_config.password)
 
         node_status = virl_api.get_nodes_status(topology_name=resource_config.reservation_id).get(app_name, {})
-        logger.debug(f"NODE Status: {node_status}")
+        logger.info(f"NODE Status: {node_status}")
         ifaces_info = virl_api.get_ifaces_info(topology_name=resource_config.reservation_id)
 
         timeout = 0
         while not node_status.get("is_reachable", False) and timeout < int(vm_instance_details.startup_timeout):
-            time.sleep(MIN_STARTUP_TIMEOUT)
+            if node_status.get("is_reachable", False) is not None:
+                logger.info(f"Try to reboot Management interface for node <{app_name}>")
+                virl_api.reboot_mgmt_port(topology_name=resource_config.reservation_id, node_name=app_name)
+                t = IFACE_REBOOT_TIMEOUT
+            else:
+                t = 0
+            time.sleep(MIN_STARTUP_TIMEOUT - t)  # Decrease interface reboot timeout
             timeout += MIN_STARTUP_TIMEOUT
             node_status = virl_api.get_nodes_status(topology_name=resource_config.reservation_id).get(app_name, {})
-            logger.debug(f"NODE Status: {node_status}")
+            logger.info(f"NODE Status: {node_status}")
 
         if not node_status.get("is_reachable", False):
             msg = "{app_name} can't changes state to REACHABLE. " \
@@ -425,9 +457,9 @@ class VIRLShellDriver(ResourceDriverInterface):
                                 password=resource_config.password)
 
             ifaces_info = virl_api.get_ifaces_info(topology_name=resource_config.reservation_id)
-            logger.debug(f"[GetVmDetails] IFACE INFO: {ifaces_info}")
+            logger.info(f"[GetVmDetails] IFACE INFO: {ifaces_info}")
             nodes_info = virl_api.get_nodes_status(topology_name=resource_config.reservation_id)
-            logger.debug(f"[GetVmDetails] NODES INFO: {nodes_info}")
+            logger.info(f"[GetVmDetails] NODES INFO: {nodes_info}")
 
             vm_details_results = []
             for refresh_request in json.loads(requests)["items"]:
@@ -463,6 +495,9 @@ class VIRLShellDriver(ResourceDriverInterface):
                 virl_api.stop_topology(topology_name=resource_config.reservation_id)
 
         cleanup_result = ActionResultBase("cleanupNetwork", cleanup_action_id)
+
+        while resource_config.reservation_id in virl_api.get_topologies_list():
+            time.sleep(30)
 
         return str(jsonpickle.encode({'driverResponse': {'actionResults': [cleanup_result]}},
                                      unpicklable=False))

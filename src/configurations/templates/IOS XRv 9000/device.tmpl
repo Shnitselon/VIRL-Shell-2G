@@ -1,0 +1,21 @@
+hostname {node_name}
+!
+username {user}
+  group root-lr
+  group cisco-support
+  secret {password}
+!
+call-home
+  service active
+  contact smart-licensing
+  profile CiscoTAC-1
+    active
+    destination transport-method http
+!
+interface MgmtEth0/RP0/CPU0/0
+  ipv4 address dhcp
+!
+!{interfaces}!
+!
+ssh server v2
+end

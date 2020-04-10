@@ -8,7 +8,7 @@ def create_vm_details(vm_name, mgmt_network, node_type, node_ifaces):
     """ Create the VM Details results used for both Deployment and Refresh VM Details """
 
     vm_instance_data = [
-        VmDetailsProperty("Instance Type", node_type)  # IOSv, NX-OSv
+        VmDetailsProperty("Instance Type", node_type)  # IOSv, NX-OSv etc
     ]
 
     vm_network_data = []

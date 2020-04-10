@@ -6,9 +6,12 @@ import ipaddress
 from lxml import etree
 from lxml.builder import ElementMaker
 
+from configurations.builder import ConfigBuilder
 from templates import configurations as config
 
 TOPOLOGY_WITH_NS = """<topology xmlns="http://www.cisco.com/VIRL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" schemaVersion="0.95" xsi:schemaLocation="http://www.cisco.com/VIRL https://raw.github.com/CiscoVIRL/schema/v0.95/virl.xsd">"""
+# AUTONETKIT = ["NX-OSv", "NX-OSv 9000", "CSR1000v"]
+AUTONETKIT = ["NX-OSv"]
 
 
 class Node:
@@ -27,6 +30,7 @@ class Node:
         self.en_password = "en_quali"
         self.default_gateway = ""
         self.address = ""
+        self.netmask = ""
         self.config = None
         self.type = "SIMPLE"
         self.snmp_community = "quali"
@@ -58,26 +62,36 @@ class Connection:
 
 
 class Topology:
-    def __init__(self, resources, connections, subnets, default_gateway):
+    def __init__(self, resources, connections, subnets, default_gateway_info):
         """  """
 
         self.resources = resources
         self.connections = connections
         self.subnets = subnets
-        self.default_gateway = default_gateway
+        # self.default_gateway = default_gateway
+        self.default_gateway, self.subnet = default_gateway_info
 
-    def create_config(self, node):
+    # def _create_config(self, node, template_path):
+    #     """ Create configuration based on node """
+    #
+    #     config_class = getattr(config, node.subtype.replace(" ", "_").replace("-", "_"))
+    #     if not config_class:
+    #         return ""
+    #
+    #     conf = config_class(node)
+    #
+    #     return conf.config_builder()
+
+    def _create_config(self, node, template_path):
         """ Create configuration based on node """
 
-        config_class = getattr(config, node.subtype.replace(" ", "_").replace("-", "_"))
-        if not config_class:
-            return ""
+        if template_path is None:
+            template_path = ""
+        builder = ConfigBuilder(node=node, templates_path=template_path)
 
-        conf = config_class(node)
+        return builder.config()
 
-        return conf.config_builder()
-
-    def get_ip_address(self, network, used_addresses=None):
+    def _get_ip_address(self, network, used_addresses=None):
         """  """
 
         if used_addresses is None:
@@ -90,7 +104,7 @@ class Topology:
             if ip not in used_addresses:
                 return ip, netmask
 
-    def create_topology(self):
+    def create_topology(self, mgmt_net_name="flat", template_path=None):
         """  """
 
         # create nodes
@@ -104,12 +118,12 @@ class Topology:
             for connection in self.connections:
                 src, dst = connection.get("src"), connection.get("dst")
                 if src == node_name or dst == node_name:
-                    iface_addr, netmask = self.get_ip_address(connection.get("network"), local_used_address)
+                    iface_addr, netmask = self._get_ip_address(connection.get("network"), local_used_address)
                     local_used_address.append(iface_addr)
                     ifaces.append(IFace(id=str(iface_id),
                                         address=str(iface_addr),
                                         netmask=str(netmask),
-                                        description="to {}".format(src if src == node_name else dst)))
+                                        description="to {}".format(dst if src == node_name else src)))
                     iface_id += 1
 
             node = Node(name=node_name,
@@ -121,10 +135,12 @@ class Topology:
             node.en_password = params.get("Enable Password")
             node.default_gateway = self.default_gateway
             node.address = params.get("ip address", "")
+
+            node.netmask = str(ipaddress.ip_network(self.subnet).netmask)
             # node.ifaces = [
             #     IFace(id="0", address="10.0.0.2", netmask="255.255.255.0", description="Description should be here")]
             node.ifaces = ifaces
-            node.config = self.create_config(node=node)
+            node.config = self._create_config(node=node, template_path=template_path)
             nodes.append(node)
 
         # Create Unmanagement Switch node for CS Subnet instance
@@ -134,12 +150,12 @@ class Topology:
             for connection in self.connections:
                 src, dst = connection.get("src"), connection.get("dst")
                 if src == node_name or dst == node_name:
-                    iface_addr, netmask = self.get_ip_address(connection.get("network"), local_used_address)
+                    iface_addr, netmask = self._get_ip_address(connection.get("network"), local_used_address)
                     local_used_address.append(iface_addr)
                     ifaces.append(IFace(id=str(iface_id),
                                         address=str(iface_addr),
                                         netmask=str(netmask),
-                                        description="to {}".format(src if src == node_name else dst)))
+                                        description="to {}".format(dst if src == node_name else src)))
                     # ifaces.append(IFace(id=str(iface_id)))
                     iface_id += 1
 
@@ -155,18 +171,20 @@ class Topology:
             src_id, dst_id = None, None
             src_iface_id, dst_iface_id = None, None
 
-            for index, node in enumerate(nodes):
+            for index, node in enumerate(nodes, start=1):
                 if node.name == connection.get("src"):
-                    src_id = index + 1
                     for iface in node.ifaces:
-                        if ipaddress.ip_address(iface.address) in ipaddress.ip_network(network):
+                        if ipaddress.ip_address(iface.address) in ipaddress.ip_network(network) \
+                                and connection.get("dst") in iface.description:
+                            src_id = index
                             src_iface_id = int(iface.id) + 1
                             break
 
                 elif node.name == connection.get("dst"):
-                    dst_id = index + 1
                     for iface in node.ifaces:
-                        if ipaddress.ip_address(iface.address) in ipaddress.ip_network(network):
+                        if ipaddress.ip_address(iface.address) in ipaddress.ip_network(network) \
+                                and connection.get("src") in iface.description:
+                            dst_id = index
                             dst_iface_id = int(iface.id) + 1
                             break
 
@@ -178,14 +196,14 @@ class Topology:
                                     dst_node_id=dst_id,
                                     dst_iface_id=dst_iface_id))
 
-        topology_data = etree.tostring(self.topology_to_xml(nodes=nodes, connections=conns),
+        topology_data = etree.tostring(self.topology_to_xml(nodes=nodes, connections=conns, mgmt_net=mgmt_net_name),
                                        encoding="UTF-8",
                                        pretty_print=True,
                                        xml_declaration=True).decode()
 
         return topology_data.replace("<topology>", TOPOLOGY_WITH_NS)
 
-    def topology_to_xml(self, nodes, connections):
+    def topology_to_xml(self, nodes, connections, mgmt_net="flat"):
         """  """
 
         builder = ElementMaker()
@@ -201,9 +219,13 @@ class Topology:
         xml_nodes = []
         for node in nodes:
             ifaces = [INTERFACE(id=str(iface.id), ipv4=str(iface.address)) for iface in node.ifaces]
-            entries = [ENTRY("all", key="ansible_group", type="String")]
+            entries = [ENTRY("all", key="ansible_group", type="String"),
+                       ENTRY("false", key="Auto-generate config", type="Boolean")]
             if node.config:
                 entries.append(ENTRY(node.config, key="config", type="string"))
+
+            if node.subtype in AUTONETKIT:
+                entries.append(ENTRY("", key="AutoNetkit.mgmt_ip", type="string"))
 
             node_params = {"name": node.name, "type": node.type,
                            "subtype": node.subtype, "ipv4": str(node.address),
@@ -223,7 +245,7 @@ class Topology:
 
         topology = TOPOLOGY(
             EXTENSIONS(
-                ENTRY("flat", key="management_network", type="String"),
+                ENTRY(mgmt_net, key="management_network", type="String"),
                 ENTRY("false", key="management_lxc", type="Boolean"),
                 ENTRY("true", key="AutoNetkit.enable_cdp", type="Boolean"),
             ),
@@ -241,42 +263,58 @@ if __name__ == "__main__":
     #              "Enable Password": "quali_enable_password"},
     # }
 
-    VIRL_RESOURCES = {
-        'resources': {
-            'IOSv': {'image type': 'IOSv',
-                     'autostart': 'True',
-                     'startup timeout': '300',
-                     'Password': 'quali',
-                     'User': 'quali',
-                     'Enable Password': 'quali'},
-            'IOSv_1': {'image type': 'IOSv',
-                       'autostart': 'True',
-                       'startup timeout': '300',
-                       'Password': 'quali',
-                       'User': 'quali',
-                       'Enable Password': 'quali'}},
-        'connections': [{'src': 'IOSv', 'dst': 'Subnet - 10.0.0.16-10.0.0.31', 'network': '10.0.0.16/28'},
-                        {'src': 'IOSv', 'dst': 'IOSv_1', 'network': '10.0.0.0/28'}],
-        'subnets': {'Subnet - 10.0.0.16-10.0.0.31': '10.0.0.16/28'},
-        'default_gateway': ('192.168.105.1', '192.168.105.0/24')}
+    # VIRL_RESOURCES = {
+    #     'resources': {
+    #         'IOSv': {'image type': 'IOSv',
+    #                  'autostart': 'True',
+    #                  'startup timeout': '300',
+    #                  'Password': 'quali',
+    #                  'User': 'quali',
+    #                  'Enable Password': 'quali'},
+    #         'IOSv_1': {'image type': 'IOSv',
+    #                    'autostart': 'True',
+    #                    'startup timeout': '300',
+    #                    'Password': 'quali',
+    #                    'User': 'quali',
+    #                    'Enable Password': 'quali'}},
+    #     'connections': [{'src': 'IOSv', 'dst': 'Subnet - 10.0.0.16-10.0.0.31', 'network': '10.0.0.16/28'},
+    #                     {'src': 'IOSv', 'dst': 'IOSv_1', 'network': '10.0.0.0/28'}],
+    #     'subnets': {'Subnet - 10.0.0.16-10.0.0.31': '10.0.0.16/28'},
+    #     'default_gateway': ('192.168.105.1', '192.168.105.0/24')}
 
-    res_details = VIRL_RESOURCES
-    subnet_action_id = "qwerty"
-    subnet_action_cidr = "10.0.0.0/28"
+    VIRL_RESOURCES = {'resources': {
+        'CSR1000v': {'image type': 'CSR1000v', 'autostart': 'True', 'startup timeout': '300', 'Password': 'quali',
+                     'User': 'quali', 'Enable Password': 'quali'},
+        'IOSvL2': {'image type': 'IOSvL2', 'autostart': 'True', 'startup timeout': '300', 'Password': 'quali',
+                   'User': 'quali', 'Enable Password': 'quali'},
+        'NX-OSv_9000': {'image type': 'NX-OSv 9000', 'autostart': 'True', 'startup timeout': '300', 'User': 'quali',
+                        'Password': 'quali', 'Enable Password': 'quali'},
+        'ASAv': {'image type': 'ASAv', 'autostart': 'True', 'startup timeout': '300', 'Password': 'quali',
+                 'User': 'quali', 'Enable Password': 'quali'}},
+        'connections': [{'src': 'ASAv', 'dst': 'Subnet - 10.0.0.32-10.0.0.47', 'network': '10.0.0.32/28'},
+                        {'src': 'Subnet - 10.0.0.32-10.0.0.47', 'dst': 'IOSvL2', 'network': '10.0.0.32/28'},
+                        {'src': 'IOSvL2', 'dst': 'CSR1000v', 'network': '10.0.0.0/28'},
+                        {'src': 'IOSvL2', 'dst': 'NX-OSv_9000', 'network': '10.0.0.16/28'}],
+        'subnets': {'Subnet - 10.0.0.32-10.0.0.47': '10.0.0.32/28'},
+        'default_gateway_info': ('192.168.105.1', '192.168.105.0/24')}
 
-    action_id = None
-    for connection in res_details.get("connections", []):
-        if connection.get("network") == subnet_action_cidr:
-            action_id = subnet_action_id
-            break
-    if not action_id and subnet_action_cidr in res_details.get("subnets", {}).values():
-        action_id = subnet_action_id
-    # else:
+    # res_details = VIRL_RESOURCES
+    # subnet_action_id = "qwerty"
+    # subnet_action_cidr = "10.0.0.0/28"
+    #
+    # action_id = None
+    # for connection in res_details.get("connections", []):
+    #     if connection.get("network") == subnet_action_cidr:
+    #         action_id = subnet_action_id
+    #         break
+    # if not action_id and subnet_action_cidr in res_details.get("subnets", {}).values():
+    #     action_id = subnet_action_id
+    # # else:
     #     raise VIRLShellError(f"Couldn't find appropriate network for action id {subnet_action_id}")
 
-    # topo = Topology(**VIRL_RESOURCES)
+    topo = Topology(**VIRL_RESOURCES)
     # topo = Topology(resources=VIRL_RESOURCES, connections={}, subnets={}, default_gateway="192.168.26.1")
 
-    # data = topo.create_topology()
+    data = topo.create_topology()
 
-    # print(data)
+    print(data)

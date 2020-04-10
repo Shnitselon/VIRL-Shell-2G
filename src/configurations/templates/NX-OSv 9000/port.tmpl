@@ -1,0 +1,6 @@
+interface Ethernet1/{id}
+  description {description}
+  no switchport
+  ip address {address} {netmask}
+  ip router ospf 1 area 0.0.0.0
+  no shutdown

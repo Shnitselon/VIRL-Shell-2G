@@ -66,7 +66,7 @@ def get_reservation_details(api, reservation_id, cloud_provider_name):
         elif connector.Target in subnets:
             connections.append({"src": connector.Source, "dst": connector.Target, "network": subnets[connector.Target]})
 
-    return {"resources": virl_resources, "connections": connections, "subnets": subnets}
+    return details.Id, {"resources": virl_resources, "connections": connections, "subnets": subnets}
 
 
 if __name__ == "__main__":
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     PASSWORD = "admin"
     DOMAIN = "Global"
 
-    RES_ID = "f70d65c5-c3f3-4912-8b95-17a9652bc4ce"
+    RES_ID = "3e384d29-d6fd-455c-9e5c-6bc0bc0d0e68"
     api = CloudShellAPISession(host=HOST,
                                username=USERNAME,
                                password=PASSWORD,

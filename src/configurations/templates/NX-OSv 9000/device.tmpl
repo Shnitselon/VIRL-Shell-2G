@@ -1,0 +1,50 @@
+hostname {node_name}
+vdc {node_name} id 1
+  limit-resource vlan minimum 16 maximum 4094
+  limit-resource vrf minimum 2 maximum 4096
+  limit-resource port-channel minimum 0 maximum 511
+  limit-resource u4route-mem minimum 96 maximum 96
+  limit-resource u6route-mem minimum 24 maximum 24
+  limit-resource m4route-mem minimum 58 maximum 58
+  limit-resource m6route-mem minimum 8 maximum 8
+
+feature telnet
+feature ospf
+
+no password strength-check
+username admin password 5 $1$KuOSBsvW$Cy0TSD..gEBGBPjzpDgf51 role network-admin
+ip domain-lookup
+rmon event 1 log trap public description FATAL(1) owner PMON@FATAL
+rmon event 2 log trap public description CRITICAL(2) owner PMON@CRITICAL
+rmon event 3 log trap public description ERROR(3) owner PMON@ERROR
+rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
+rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
+
+copp profile strict
+
+vlan 1
+
+vrf context management
+
+hardware forwarding unicast trace
+
+interface loopback0
+  description Loopback
+  ip address 192.168.0.5/32
+  ip router ospf 1 area 0.0.0.0
+
+interface mgmt0
+  description OOB Management
+  ip address dhcp
+  duplex full
+  no shutdown
+  vrf member management
+
+{interfaces}
+
+username {user} password {password} role network-admin
+
+line console
+line vty
+router ospf 1
+  router-id 192.168.0.5

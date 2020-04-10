@@ -133,6 +133,18 @@ class VIRLShellDriverResource(object):
         self.attributes["{}.Management Network".format(self._cloudshell_model_name)] = value
 
     @property
+    def templates_path(self):
+        """ Get path where device configuration templates stored """
+
+        return self.attributes.get("{}.Configuration Templates Location".format(self._cloudshell_model_name), None)
+
+    @templates_path.setter
+    def templates_path(self, value):
+        """ Set path where device configuration templates stored """
+
+        self.attributes["{}.Configuration Templates Location".format(self._cloudshell_model_name)] = value
+
+    @property
     def name(self):
         """  """
 

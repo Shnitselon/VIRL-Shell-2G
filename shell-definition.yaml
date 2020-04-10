@@ -35,6 +35,9 @@ node_types:
         description: UWM API port
         type: integer
         default: 19400
+      Configuration Templates Location:
+        description: Full path where device configuration templates stored
+        type: string
     capabilities:
       concurrent_execution:
         type: cloudshell.capabilities.SupportConcurrentCommands
@@ -68,7 +71,9 @@ node_types:
             description: UWM API port
             type: integer
             default: 19400
-
+          Configuration Templates Location:
+            description: Full path where device configuration templates stored
+            type: string
     artifacts:
       icon:
         file: VIRL.png
