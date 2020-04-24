@@ -8,7 +8,7 @@ DEVICE_INFO = {"DEFAULT": {"delimiter": "!", "port_id": 1},
                # "IOSvL2": {"delimiter": "!", "port_id": 1},
                # "NX-OSv": {"delimiter": "!", "port_id": 1},
                # "NX-OSv 9000": {"delimiter": "!", "port_id": 1},
-               # "IOS XRv": {"delimiter": "!", "port_id": 1},
+               "IOS XRv": {"delimiter": "!", "port_id": 0},
                # "IOS XRv 9000": {"delimiter": "!", "port_id": 1},
                "CSR1000v": {"delimiter": "!", "port_id": 2},
                # "ASAv": {"delimiter": "!", "port_id": 1}
