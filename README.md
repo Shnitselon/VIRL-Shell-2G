@@ -26,12 +26,12 @@ Release date: April 2020
 A shell integrates a device model, application or other technology with CloudShell. A shell consists of a data model that defines how the device and its properties are modeled in CloudShell, along with automation that enables interaction with the device via CloudShell.
 
 ### Cloud Provider Shells
-CloudShell's Cloud Providers shells provide L2 or L3 connectivity between resources and/or Apps [remove "and/or Apps" if router].
+CloudShell's Cloud Provider shells provide L2 or L3 connectivity between resources and/or Apps [remove "and/or Apps" if router].
 
 ### VIRL Shell
-VIRL Shell provides you with connectivity and management capabilities such as device discovery and power management for the resource. 
+VIRL Shell provides you with Cisco VIRL connectivity and management capabilities such as device discovery and power management for the resource. 
 
-For more information on the device, see the vendor's official product documentation.
+For more information on the device, see official Cisco VIRL documentation [here](http://virl.cisco.com/).
 
 ### Standard version
 VIRL Shell is based on the Cloud Provider Standard version **1.0.0**.
@@ -46,21 +46,17 @@ Release: VIRL Shell
 
 ▪ Other
 
-[Include this note only if the shell is a 2G shell]
-
 **Note:** If your CloudShell version does not support this shell, you should consider upgrading to a later version of CloudShell or contact customer support. 
 
 ### Data Model
 
 The shell's data model includes all shell metadata, families, and attributes.
 
-#### **VIRL Shell Attributes**
+#### VIRL Shell Attributes
 
 The attribute names and types are listed in the following section of the Cloud Provider Shell Standard:
 
-[Common Cloud Provider Attributes](https://github.com/QualiSystems/cloudshell-standards/blob/master/Documentation/cloud_provider_standard.md#attributes)
-
-The following table describes attributes that are unique to this shell and are not documented in the Shell Standard: 
+The following table describes attributes that are unique to this shell and are not documented in the Shell Standard. For the Shell Standard's attributes, see [Common Cloud Provider Attributes](https://github.com/QualiSystems/cloudshell-standards/blob/master/Documentation/cloud_provider_standard.md#attributes).
 
 
 |Attribute Name|Data Type|Description|
@@ -72,16 +68,15 @@ The following table describes attributes that are unique to this shell and are n
 |UWM API Port|integer|UWM API Port (default is 193400)|
 |Configuration Templates Location|string|Full path where device configuration templates stored|
 
+
 ### Automation
 This section describes the automation (driver) associated with the data model. The shell’s driver is provided as part of the shell package. There are two types of automation processes, Autoload and Resource. Autoload is executed when creating the resource in the **Inventory** dashboard.
 
-For detailed information on each available commands, see the following section of the Cloud Provider Standard:
-
-[Common Cloud Provider Commands](https://github.com/QualiSystems/cloudshell-standards/blob/master/Documentation/cloud_provider_standard.md#commands)
+For detailed information on each available commands, see [Common Cloud Provider Commands](https://github.com/QualiSystems/cloudshell-standards/blob/master/Documentation/cloud_provider_standard.md#commands).
 
 
 # Downloading the Shell
-The VIRL Shell shell is available from the [Quali Community Integrations](https://community.quali.com/integrations) page. 
+VIRL Shell is available in the [Quali Community Integrations](https://community.quali.com/integrations) page. 
 
 Download the files into a temporary location on your local machine. 
 
@@ -93,7 +88,7 @@ The shell comprises:
 |cloudshell-CP-VIRL-dependencies-package-1.0.x.zip|Shell Python dependencies (for offline deployments only)|
 
 # Importing and Configuring the Shell
-This section describes how to import the VIRL Shell shell and configure and modify the shell’s devices.
+This section describes how to import VIRL Shell and configure and modify the shell’s devices.
 
 ### Importing the shell into CloudShell
 
@@ -108,32 +103,24 @@ This section describes how to import the VIRL Shell shell and configure and modi
 
 ### Offline installation of a shell
 
-**Note:** Offline installation instructions are relevant only if CloudShell Execution Server has no access to PyPi. You can skip this section if your execution server has access to PyPi. For additional information, see the online help topic on offline dependencies.
+**Note:** Offline installation instructions are relevant only if CloudShell Execution Server has no access to PyPi. You can skip this section if your execution server has access to PyPi. For additional information, see the [CloudShell Help](help.quali.com) topic on offline dependencies.
 
-In offline mode, import the shell into CloudShell and place any dependencies in the appropriate dependencies folder. The dependencies folder may differ, depending on the CloudShell version you are using:
-
-* For CloudShell version 8.3 and above, see [Adding Shell and script packages to the local PyPi Server repository](#adding-shell-and-script-packages-to-the-local-pypi-server-repository).
-
-* For CloudShell version 8.2, perform the appropriate procedure: [Adding Shell and script packages to the local PyPi Server repository](#adding-shell-and-script-packages-to-the-local-pypi-server-repository) or [Setting the Python pythonOfflineRepositoryPath configuration key](#setting-the-python-pythonofflinerepositorypath-configuration-key).
-
-* For CloudShell versions prior to 8.2, see [Setting the Python pythonOfflineRepositoryPath configuration key](#setting-the-python-pythonofflinerepositorypath-configuration-key).
+In offline mode, import the shell into CloudShell and place any dependencies in the appropriate dependencies folder. For additional information, see [Adding Shell and script packages to the local PyPi Server repository](#adding-shell-and-script-packages-to-the-local-pypi-server-repository).
 
 ### Adding shell and script packages to the local PyPi Server repository
-If your Quali Server and/or execution servers work offline, you will need to copy all required Python packages, including the out-of-the-box ones, to the PyPi Server's repository on the Quali Server computer (by default *C:\Program Files (x86)\QualiSystems\CloudShell\Server\Config\Pypi Server Repository*).
+If your Quali Server and/or execution servers work offline, you will need to copy all required Python packages, including the out-of-the-box ones, to the PyPi Server's repository on the Quali Server computer.
 
 For more information, see [Configuring CloudShell to Execute Python Commands in Offline Mode](http://help.quali.com/Online%20Help/9.0/Portal/Content/Admn/Cnfgr-Pyth-Env-Wrk-Offln.htm?Highlight=Configuring%20CloudShell%20to%20Execute%20Python%20Commands%20in%20Offline%20Mode).
 
 **To add Python packages to the local PyPi Server repository:**
-  1. If you haven't created and configured the local PyPi Server repository to work with the execution server, perform the steps in [Add Python packages to the local PyPi Server repository (offline mode)](http://help.quali.com/Online%20Help/9.0/Portal/Content/Admn/Cnfgr-Pyth-Env-Wrk-Offln.htm?Highlight=offline%20dependencies#Add). 
-  
-  2. For each shell or script you add into CloudShell, do one of the following (from an online computer):
+  1. For each shell or script you add into CloudShell, do one of the following (from an online computer):
       * Connect to the Internet and download each dependency specified in the *requirements.txt* file with the following command: 
 `pip download -r requirements.txt`. 
      The shell or script's requirements are downloaded as zip files.
 
       * In the [Quali Community's Integrations](https://community.quali.com/integrations) page, locate the shell and click the shell's **Download** link. In the page that is displayed, from the Downloads area, extract the dependencies package zip file.
 
-3. Place these zip files in the local PyPi Server repository.
+2. Place these zip files in the local PyPi Server repository on the Quali Server computer (by default *C:\Program Files (x86)\QualiSystems\CloudShell\Server\Config\Pypi Server Repository*).
  
 ### Configuring a new resource
 This section explains how to create a new resource from the shell.
@@ -152,7 +139,7 @@ You can also modify existing resources, see [Managing Resources in the Inventory
   
   4. Click **Create**.
   
-  5. In the **Resource** dialog box, enter the device's settings, see [VIRL Cloud Provider Shell Attributes](#virl-cloud-provider-attributes)
+  5. In the **Resource** dialog box, enter the device's settings, see [VIRL Shell Attributes](#virl-shell-attributes)
   
   6. Click **Continue**.
 
