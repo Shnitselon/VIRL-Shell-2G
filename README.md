@@ -29,7 +29,7 @@ A shell integrates a device model, application or other technology with CloudShe
 CloudShell's Cloud Providers shells provide L2 or L3 connectivity between resources and/or Apps [remove "and/or Apps" if router].
 
 ### VIRL Shell
-VIRL Shell provides you with connectivity and management capabilities such as device discovery and power management for the resource. 
+VIRL Shell provides you with apps deployment and management capabilities. 
 
 For more information on the device, see the vendor's official product documentation.
 
@@ -176,7 +176,8 @@ In online mode, the execution server automatically downloads and extracts the ap
 
 # Typical Workflows 
 
-For detailed information about typical workflows, see the following section on Quali Help:
+Virl Shell requires you to create an appropriate App templates, which would be deployed during sandbox reservation.
+For detailed information about App templates, see the following section on the Quali Help:
 
 [Applications' Typical Workflow](https://help.quali.com/Online%20Help/0.0/Portal/Content/CSP/MNG/Mng-Apps.htm?Highlight=App#Adding)
 
@@ -192,15 +193,11 @@ To connect with Quali users and experts from around the world, ask questions and
 # Release Notes 
 
 ### What's New
-
-[Note]: Insert link to the release section of the shell GitHub repository to view changes made in each release. You should include a brief description of the fixes and enhancements made in this release.
-
-For release updates, see the shell's [GitHub releases page](https://github.com/QualiSystems/{{cookiecutter.model_name}}/releases).
+For release updates, see the shell's [GitHub releases page](https://github.com/QualiSystems/VIRL-Shell-2G/releases).
 
 ### Known Issues
-* It's not possible to create custom user during topology creation for image type - NX-OSv 9000
-* It's not possible to upload custom device configuration during topology creation for image type - IOS XRv 9000
-* 
+* It's not possible to create custom user during topology creation for image type - NX-OSv 9000. Only admin user is available
+* It's not possible to upload custom device configuration during topology creation for image type - IOS XRv 9000.
 
 
 [1]: https://github.com/QualiSystems/shellfoundry-tosca-networking-template/blob/master/cloudshell_logo.png
