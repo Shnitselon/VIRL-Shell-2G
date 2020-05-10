@@ -189,14 +189,11 @@ To connect with Quali users and experts from around the world, ask questions and
 
 ### What's New
 
-[Note]: Insert link to the release section of the shell GitHub repository to view changes made in each release. You should include a brief description of the fixes and enhancements made in this release.
-
-For release updates, see the shell's [GitHub releases page](https://github.com/QualiSystems/{{cookiecutter.model_name}}/releases).
+For release updates, see the shell's [GitHub releases page](https://github.com/QualiSystems/VIRL-Shell-2G/releases).
 
 ### Known Issues
 * It's not possible to create custom user during topology creation for image type - NX-OSv 9000
 * It's not possible to upload custom device configuration during topology creation for image type - IOS XRv 9000
-* 
 
 
 [1]: https://github.com/QualiSystems/shellfoundry-tosca-networking-template/blob/master/cloudshell_logo.png
