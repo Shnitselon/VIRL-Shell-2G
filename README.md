@@ -29,7 +29,7 @@ A shell integrates a device model, application or other technology with CloudShe
 CloudShell's Cloud Providers shells provide L2 or L3 connectivity between resources and/or Apps [remove "and/or Apps" if router].
 
 ### VIRL Shell
-VIRL Shell provides you with connectivity and management capabilities such as device discovery and power management for the resource. 
+VIRL Shell provides you with apps deployment and management capabilities. 
 
 For more information on the device, see the vendor's official product documentation.
 
@@ -192,8 +192,9 @@ To connect with Quali users and experts from around the world, ask questions and
 For release updates, see the shell's [GitHub releases page](https://github.com/QualiSystems/VIRL-Shell-2G/releases).
 
 ### Known Issues
-* It's not possible to create custom user during topology creation for image type - NX-OSv 9000
-* It's not possible to upload custom device configuration during topology creation for image type - IOS XRv 9000
+* It's not possible to create custom user during topology creation for image type - NX-OSv 9000. Only admin user is available
+* It's not possible to upload custom device configuration during topology creation for image type - IOS XRv 9000.
+
 
 
 [1]: https://github.com/QualiSystems/shellfoundry-tosca-networking-template/blob/master/cloudshell_logo.png
